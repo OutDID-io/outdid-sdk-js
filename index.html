@@ -1,0 +1,112 @@
+<!-- index.html -->
+<html>
+
+<head>
+  <style>
+    .button {
+      border: none;
+      color: white;
+      padding: 16px 32px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      transition-duration: 0.4s;
+      cursor: pointer;
+    }
+
+    .button1 {
+      background-color: white;
+      color: black;
+      border: 2px solid #4CAF50;
+    }
+
+    .button1:hover {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .button2 {
+      background-color: white;
+      color: black;
+      border: 2px solid #008CBA;
+    }
+
+    .button2:hover {
+      background-color: #008CBA;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <script src="outdid.js"></script>
+  <script>
+    function requestProof() {
+      const outdid = new OutdidSDK("<your API key>");
+      // outdid.requestProof({"appID": "application ID 1", "nationality": "japan", "checkNationality": 1}).then((proof) => outdid.verifyProof(proof).then(console.log));
+      const minAge = document.getElementById("minAge").value;
+      const maxAge = document.getElementById("maxAge").value;
+      const nationality = document.getElementById("nationality").value;
+      const checkNationalityCheckbox = document.getElementById("checkNationality");
+      const eqNationalityCheckbox = document.getElementById("eqNationality");
+
+      let checkNationality = 0;
+
+      if (checkNationalityCheckbox.checked) {
+        checkNationality = eqNationalityCheckbox.checked ? 1 : 2;
+      }
+      const appID = document.getElementById("appID").value;
+      outdid.requestAndVerifyProof({ appID: appID == "" ? undefined : appID, nationality: nationality == "" ? undefined : nationality, checkNationality: checkNationality, minAge: minAge == "" ? undefined : minAge, maxAge: maxAge == "" ? undefined : maxAge }).then((result) => {
+        console.log(result)
+        const pre = document.getElementById("proofResult");
+        pre.innerHTML = "Result from verifying the passport information: " + result.result
+          + "\nThese are the proven parameters: " + JSON.stringify(result.params, null, 4)
+          + "\nThe actual certificate returned was: " + JSON.stringify(result.cert, null, 4);
+      }).catch((e) => {
+        const pre = document.getElementById("proofResult");
+        if (e.message == "App version is not supported by this backend") {
+          pre.innerHTML = "App version not supported by backend";
+        }
+        else {
+          pre.innerHTML = "Proof cannot be verified";
+        }
+        throw e;
+      });
+    }
+
+    function checkNationalityChange() {
+      var checked = document.getElementById("checkNationality").checked;
+      var eqNationality = document.getElementById("eqNationality");
+      if (checked) {
+        eqNationality.disabled = false;
+      } else {
+        eqNationality.disabled = true;
+      }
+    }
+  </script>
+  <label for="minAge">Min age:</label><br>
+  <input type="text" id="minAge" name="minAge"><br>
+  <br>
+  <label for="maxAge">Max age:</label><br>
+  <input type="text" id="maxAge" name="maxAge"><br>
+  <br>
+  <label for="nationality">Nationality:</label><br>
+  <input type="text" id="nationality" name="nationality"><br>
+  <br>
+  <input type="checkbox" id="checkNationality" name="checkNationality" value="true" onClick="checkNationalityChange()">
+  <label for="checkNationality" style="user-select: none;" onClick="checkNationalityChange()"> Check Nationality
+  </label><br>
+
+  <input type="checkbox" id="eqNationality" name="eqNationality" value="true" checked disabled>
+  <label for="eqNationality" style="user-select: none;"> Nationality Equal To </label><br>
+  <br>
+  <label for="appID">App ID:</label><br>
+  <input type="text" id="appID" name="appID"> <br><br>
+  <button class="button button2" onclick="requestProof()">Request proof</button>
+
+  <pre id="proofResult"> </pre>
+</body>
+
+</html>

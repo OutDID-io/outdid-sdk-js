@@ -1,0 +1,12 @@
+node_modules/
+outdid.js
+
+build/
+
+.DS_Store
+.vscode/
+
+*.swp
+
+utils.*
+!utils.ts
