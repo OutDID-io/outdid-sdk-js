@@ -100,6 +100,8 @@ function cancelProof() {
         console.log(timestamp() + " Cancelling proof");
         const cancelProofEndpoint = new URL(globalServerHandlerUrl);
         cancelProofEndpoint.pathname += "cancelProof";
+        cancelProofEndpoint.searchParams.set("requestID", globalRequestID);
+        cancelProofEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
         post(cancelProofEndpoint, {
             requestID: globalRequestID,
             reqfrom: REQUEST_FROM,
@@ -280,6 +282,8 @@ class OutdidSDK {
         console.log(timestamp() + " Requesting proof with ID " + requestID);
         const requestProofEndpoint = new URL(this.serverHandlerUrl);
         requestProofEndpoint.pathname += "requestProof";
+        requestProofEndpoint.searchParams.set("requestID", requestID);
+        requestProofEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
         await post(requestProofEndpoint, {
             requestID,
             reqfrom: REQUEST_FROM,
@@ -291,6 +295,8 @@ class OutdidSDK {
         return new Promise((resolve, reject) => {
             const pingEndpoint = new URL(this.serverHandlerUrl);
             pingEndpoint.pathname += "ping";
+            pingEndpoint.searchParams.set("requestID", requestID);
+            pingEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
             interval = setInterval(() => {
                 var err = false;
                 post(pingEndpoint, {
