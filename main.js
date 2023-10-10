@@ -34,10 +34,10 @@ const waitText = "Please wait while the proof is generating";
 const descriptionText = "Scan this QR code with your mobile phone that has OutDID installed and generate a proof. <br>"
     + "In order to submit the proof, you will need to be connected to the internet.";
 
-const CANVAS_HEIGHT = 400;
-const CANVAS_WIDTH = 400;
+const CANVAS_HEIGHT = window.innerWidth < 800 ? window.innerHeight * 0.4 : 400;
+const CANVAS_WIDTH = window.innerWidth < 800 ? window.innerWidth * 0.4 : 400;
 
-const PROOF_PARAMETERS = ["minAge", "maxAge", "nationality", "checkNationality", "appID"];
+const PROOF_PARAMETERS = ["minAge", "maxAge", "nationality", "checkNationality", "uniqueID"];
 
 var REQUEST_FROM;
 
@@ -135,7 +135,11 @@ description.innerHTML = descriptionText;
 description.style.zIndex = "1";
 description.style.margin = "16px 40px";
 description.style.display = "block";
-description.style.fontSize = "19px";
+description.style.fontSize = window.innerWidth < 800 ? "12px" : "19px";
+if (window.innerWidth < 800) {
+    copyBtn.style.fontSize = "12px";
+    openLinkBtn.style.fontSize = "12px";
+}
 
 close.innerHTML = "&times";
 close.setAttribute("id", "outdid-close");
@@ -173,7 +177,7 @@ function copyLink(proofUrl) {
 
 copyBtn.innerHTML = "Copy link";
 copyBtn.setAttribute("class", "outdid-btn");
-openLinkBtn.innerHTML = "Open link in OutDID";
+openLinkBtn.innerHTML = "Open link in Outdid";
 openLinkBtn.setAttribute("class", "outdid-btn");
 
 canvasDiv.appendChild(description)
@@ -379,10 +383,7 @@ class OutdidSDK {
 
     constructor(apiKey) {
         this.proofUrl = new URL("https://request.outdid.io/proof");
-        // this.serverHandlerUrl = new URL("http://backend-load-balancer-d2ef2fd09b7f4b52.elb.eu-north-1.amazonaws.com/");
-        this.serverHandlerUrl = new URL("https://us1oxx3qwi.execute-api.eu-north-1.amazonaws.com/api/");
-        // this.serverHandlerUrl = new URL("http://localhost:8180");
-        // this.serverHandlerUrl = new URL("http://10.68.181.105:8180");
+        this.serverHandlerUrl = new URL("https://api.outdid.io");
         globalServerHandlerUrl = this.serverHandlerUrl;
 
         // TODO: check if apiKey is valid
@@ -394,9 +395,9 @@ class OutdidSDK {
     /**
      * Request a proof generated from OutDID's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
-     * @param {string?} proofParameters.appID Specify the ID of the application requesting the proof. Users will have a unique identifiers based on this ID
+     * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
      * @param {string?} proofParameters.nationality Require users to be or not to be of a specific nationality
-     * @param {string?} proofParameters.checkNationality Determines whether @param proofParameters.nationality requires users to be (@param proofParameters.checkNationality is set to `1` or ignored) or not to be (@param proofParameters.checkNationality set to `2`) of the specified nationality, or ignored (@param proofParameters.checkNationality set to `0`)
+     * @param {number?} proofParameters.checkNationality Determines whether @param proofParameters.nationality requires users to be (@param proofParameters.checkNationality is set to `1` or ignored) or not to be (@param proofParameters.checkNationality set to `2`) of the specified nationality, or ignored (@param proofParameters.checkNationality set to `0`)
      * @param {string?} proofParameters.minAge Require users to be at least @param proofParameters.minAge years old
      * @param {string?} proofParameters.maxAge Require users to be at most @param proofParameters.maxAge years old
      * @returns {Promise} A `Promise` that is fulfilled when the proof is done on the app
@@ -490,9 +491,9 @@ class OutdidSDK {
     /**
      * Request and verify a proof generated from OutDID's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
-     * @param {string?} proofParameters.appID Specify the ID of the application requesting the proof. Users will have a unique identifiers based on this ID
+     * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
      * @param {string?} proofParameters.nationality Require users to be or not to be of a specific nationality
-     * @param {string?} proofParameters.checkNationality Determines whether @param proofParameters.nationality requires users to be (@param proofParameters.checkNationality is set to `1` or ignored) or not to be (@param proofParameters.checkNationality set to `2`) of the specified nationality, or ignored (@param proofParameters.checkNationality set to `0`)
+     * @param {number?} proofParameters.checkNationality Determines whether @param proofParameters.nationality requires users to be (@param proofParameters.checkNationality is set to `1` or ignored) or not to be (@param proofParameters.checkNationality set to `2`) of the specified nationality, or ignored (@param proofParameters.checkNationality set to `0`)
      * @param {string?} proofParameters.minAge Require users to be at least @param proofParameters.minAge years old
      * @param {string?} proofParameters.maxAge Require users to be at most @param proofParameters.maxAge years old
      * @returns {Promise<{result: boolean, cert, params}>} Whether the proof is valid or not, the generated certificate, and the parameters in the proof

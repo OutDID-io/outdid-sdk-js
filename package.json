@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "build": "node node_modules/typescript/bin/tsc && node node_modules/browserify/bin/cmd.js main.js > outdid.js",
+    "init": "node node_modules/typescript/bin/tsc && node node_modules/browserify/bin/cmd.js main.js > outdid.js && (rm -r build/ || true) && mkdir build/ && cp index.html outdid.js build/",
+    "build": "node node_modules/typescript/bin/tsc && node node_modules/browserify/bin/cmd.js main.js > outdid.js && cp index.html outdid.js build/",
     "coverage": "jest --coverage"
   },
   "author": "",
