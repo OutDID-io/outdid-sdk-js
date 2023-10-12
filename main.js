@@ -190,19 +190,22 @@ canvasDiv.appendChild(header);
 canvasDiv.appendChild(footer);
 
 loader.setAttribute("id", "outdid-loader");
+const loaderSize = window.innerWidth < 800 ? 80 : 180;
+const loaderPosLeft = (CANVAS_WIDTH + 80) * 0.5 - (loaderSize / 2);
+const loaderPosTop = (CANVAS_HEIGHT + 140) * 0.5 - (loaderSize / 2);
 const style = document.createElement('style');
 const css = `
     #outdid-loader {
       /* border: 16px solid #f3f3f3; */
       /* border-radius: 50%; */
       /* border-top: 16px solid #3498db; */
-      width: 180px;
-      height: 180px;
+      width: ${loaderSize}px;
+      height: ${loaderSize}px;
       -webkit-animation: spin 5030ms linear infinite; /* Safari */
       animation: spin 5030ms linear infinite;
       position: absolute;
-      top: 30%;
-      left: 30%;
+      top: ${loaderPosTop}px;
+      left: ${loaderPosLeft}px;
       z-index: 1;
     }
 
@@ -473,7 +476,7 @@ class OutdidSDK {
             throw new Error("Verifiable Presentation nonce is not the same as the request ID");
         }
         if (vp.verifiablePresentation.verifiableCredential === undefined) {
-            throw new Error("Verificable credential is not defined.");
+            throw new Error("Verifiable credential is not defined.");
         }
         if (vp.verifiablePresentation.verifiableCredential.length !== 1) {
             throw new Error("Incorrect number of verifiable credentials: " + vp.verifiablePresentation.verifiableCredential.length);
