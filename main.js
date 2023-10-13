@@ -488,8 +488,9 @@ class OutdidSDK {
         var params = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.proofParameters;
         const proofVerified = utils.verifyParameters(this.proofParameters, params, vp.verifiablePresentation.verifiableCredential[0].credentialSubject.appID);
         const appID = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.appID;
+        const uniqueID = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.uniqueID;
         if (appID != "") {
-            params = {...params, "appID": appID};
+            params = {...params, appID, uniqueID};
         }
         // can get unique user ID from vp.verifiablePresentation.verifiableCredential[0].credentialSubject.uniqueID
         return { result: proofVerified, cert: vp, params: params };
