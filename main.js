@@ -358,7 +358,11 @@ class OutdidSDK {
         console.log(timestamp() + " Adding the following parameters to the proof request: " + PROOF_PARAMETERS);
         for (var param of PROOF_PARAMETERS) {
             // nationality should be a valid country
-            if (param === "nationality" && this.proofParameters.nationality) {
+            if ((param === "nationality" && this.proofParameters.nationality) ||
+                (param === "nationality" && this.proofParameters.checkNationality && this.proofParameters.checkNationality != 0)) {
+                if (this.proofParameters.nationality == undefined || this.proofParameters.nationality == "") {
+                    throw new Error("Nationality cannot be empty if checkNationality is defined and non-zero");
+                }
                 if ((this.proofParameters.nationality.length == 2 && iso.whereAlpha2(this.proofParameters.nationality) == undefined)
                     || (this.proofParameters.nationality.length == 3 && iso.whereAlpha3(this.proofParameters.nationality) == undefined)
                     || (this.proofParameters.nationality.length != 2 && this.proofParameters.nationality.length != 3 && (iso.whereCountry(this.proofParameters.nationality) == undefined))
