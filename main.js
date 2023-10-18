@@ -383,6 +383,13 @@ class OutdidSDK {
         if (this.proofUrl.searchParams.get("nationality") == null) {
             this.proofUrl.searchParams.delete("checkNationality");
         }
+        if (this.proofUrl.searchParams.get("checkNationality") == "0") {
+            this.proofUrl.searchParams.delete("checkNationality");
+            this.proofUrl.searchParams.delete("nationality");
+        }
+        if (Array.from(this.proofUrl.searchParams.values()).length === 0) {
+            throw new Error("You need to request at least one valid parameter");
+        }
         this.proofUrl.searchParams.set("requestID", requestID);
         this.proofUrl.searchParams.set("requestingDomain", document.location.hostname);
         this.proofUrl.searchParams.set("reqfrom", REQUEST_FROM);
