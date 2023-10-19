@@ -294,8 +294,20 @@ class OutdidSDK {
         await post(requestProofEndpoint, {
             requestID,
             reqfrom: REQUEST_FROM,
-        }).catch((err) => {
-            closeProofOverlay();
+        })
+        .then(async (res) => {
+            if (res.status === 403) {
+                var body = "";
+                try {
+                    body = (await res.json()).reason;
+                } catch (err) {
+                    body = "Forbidden";
+                }
+                throw new Error(body);
+            }
+        })
+        .catch((err) => {
+            cancelProof();
             throw err;
         });
 
