@@ -2,7 +2,12 @@
 
 Outdid provides an SDK for private identity verification that can be integrated into any webpage using only html and javascript. You can request any combination of the supported [proof parameters](#optional-proof-parameters) and the SDK with generate a QR code that can be scanned by [Outdid's mobile app](https://outdid.io/download) and used to generate a verifiable proof that the information requested is correct for the document scanned by the app.
 
-In order to use the SDK, you can compile a build with `npm run build` and include it in your html file like so:
+In order to use the SDK, you can use our SDK CDN by including this in your html file:
+```html
+  <script src="https://cdn.outdid.io/sdk.js"></script>
+```
+
+Or you can compile a build yourself with `npm run build` and include it in your html file like so:
 
 ```html
 <script src="outdid.js"></script>
