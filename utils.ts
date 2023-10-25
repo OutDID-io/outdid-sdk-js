@@ -30,27 +30,23 @@ export function verifyParameters(requestedParameters: any, parametersFromProof: 
     }
   }
 
-  if (requestedParameters.nationality && requestedParameters.checkNationality != "0") {
+  if (requestedParameters.nationalityEqualTo || requestedParameters.nationalityNotEqualTo) {
+    var nationalityEquality = requestedParameters.nationalityEqualTo ? "nationalityEqualTo" : "nationalityNotEqualTo"
     var nationality;
-    if (requestedParameters.nationality.length == 2) {
-      nationality = iso.whereAlpha2(requestedParameters.nationality);
-    } else if (requestedParameters.nationality.length == 3) {
-      nationality = iso.whereAlpha3(requestedParameters.nationality);
+    if (requestedParameters[nationalityEquality].length == 2) {
+      nationality = iso.whereAlpha2(requestedParameters[nationalityEquality]);
+    } else if (requestedParameters[nationalityEquality].length == 3) {
+      nationality = iso.whereAlpha3(requestedParameters[nationalityEquality]);
     } else {
-      nationality = iso.whereCountry(requestedParameters.nationality);
+      nationality = iso.whereCountry(requestedParameters[nationalityEquality]);
     }
     if (nationality === undefined) {
       throw new Error("Nationality cannot be converted to iso alpha 3 code");
     }
     const nationalityAlpha3 = nationality.alpha3 === "DEU" ? "D<<" : nationality.alpha3;
-    if ((requestedParameters.checkNationality !== 0 && requestedParameters.checkNationality !== 2) && parametersFromProof.nationality !== nationalityAlpha3) {
-      throw new Error(`Nationality from proof is not the same as required nationality: ${parametersFromProof.nationality} vs ${nationalityAlpha3}`);
+    if (parametersFromProof[nationalityEquality] !== nationalityAlpha3){
+      throw new Error(`Nationality equality cannot be verified: ${parametersFromProof[nationalityEquality]} vs ${nationalityAlpha3}`);
     }
-  }
-
-  if ((requestedParameters.checkNationality !== undefined && (requestedParameters.checkNationality !== parametersFromProof.checkNationality && requestedParameters.checkNationality !== 0))
-    || (requestedParameters.checkNationality === undefined && parametersFromProof.checkNationality !== 1)) {
-    throw new Error(`Check Nationality from proof is not the same as required check nationality: ${parametersFromProof.checkNationality} vs ${requestedParameters.checkNationality}`);
   }
 
   if (requestedParameters.minAge && !checkMinAgeValid(requestedParameters.minAge, parametersFromProof.maxDob)) {

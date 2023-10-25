@@ -37,7 +37,7 @@ const descriptionText = "Scan this QR code with your mobile phone that has OutDI
 const CANVAS_HEIGHT = window.innerWidth < 800 ? window.innerHeight * 0.4 : 400;
 const CANVAS_WIDTH = window.innerWidth < 800 ? window.innerWidth * 0.4 : 400;
 
-const PROOF_PARAMETERS = ["minAge", "maxAge", "nationality", "checkNationality", "uniqueID"];
+const PROOF_PARAMETERS = ["minAge", "maxAge", "nationalityEqualTo", "nationalityNotEqualTo", "uniqueID"];
 
 var REQUEST_FROM;
 
@@ -370,14 +370,11 @@ class OutdidSDK {
         console.log(timestamp() + " Adding the following parameters to the proof request: " + PROOF_PARAMETERS);
         for (var param of PROOF_PARAMETERS) {
             // nationality should be a valid country
-            if ((param === "nationality" && this.proofParameters.nationality) ||
-                (param === "nationality" && this.proofParameters.checkNationality && this.proofParameters.checkNationality != 0)) {
-                if (this.proofParameters.nationality == undefined || this.proofParameters.nationality == "") {
-                    throw new Error("Nationality cannot be empty if checkNationality is defined and non-zero");
-                }
-                if ((this.proofParameters.nationality.length == 2 && iso.whereAlpha2(this.proofParameters.nationality) == undefined)
-                    || (this.proofParameters.nationality.length == 3 && iso.whereAlpha3(this.proofParameters.nationality) == undefined)
-                    || (this.proofParameters.nationality.length != 2 && this.proofParameters.nationality.length != 3 && (iso.whereCountry(this.proofParameters.nationality) == undefined))
+            if ((param === "nationalityEqualTo" && this.proofParameters.nationalityEqualTo) ||
+                (param === "nationalityNotEqualTo" && this.proofParameters.nationalityNotEqualTo)) {
+                if ((this.proofParameters[param].length == 2 && iso.whereAlpha2(this.proofParameters[param]) == undefined)
+                    || (this.proofParameters[param].length == 3 && iso.whereAlpha3(this.proofParameters[param]) == undefined)
+                    || (this.proofParameters[param].length != 2 && this.proofParameters[param].length != 3 && (iso.whereCountry(this.proofParameters[param]) == undefined))
                 ) {
                     throw new Error("Nationality is not a country");
                 }
@@ -391,14 +388,10 @@ class OutdidSDK {
             }
         }
 
-        // if nationality has not been set, checkNationality also does not need to be set
-        if (this.proofUrl.searchParams.get("nationality") == null) {
-            this.proofUrl.searchParams.delete("checkNationality");
+        if (this.proofUrl.searchParams.get("nationalityEqualTo") && this.proofUrl.searchParams.get("nationalityNotEqualTo")) {
+            throw new Error("Cannot use both `nationalityEqualTo` and `nationalityNotEqualTo`");
         }
-        if (this.proofUrl.searchParams.get("checkNationality") == "0") {
-            this.proofUrl.searchParams.delete("checkNationality");
-            this.proofUrl.searchParams.delete("nationality");
-        }
+
         if (Array.from(this.proofUrl.searchParams.values()).length === 0) {
             throw new Error("You need to request at least one valid parameter");
         }
@@ -412,7 +405,6 @@ class OutdidSDK {
         this.serverHandlerUrl = new URL("https://api.outdid.io");
         globalServerHandlerUrl = this.serverHandlerUrl;
 
-        // TODO: check if apiKey is valid
         if (apiKey !== undefined) {
             REQUEST_FROM = apiKey;
         }
@@ -422,8 +414,8 @@ class OutdidSDK {
      * Request a proof generated from OutDID's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
      * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
-     * @param {string?} proofParameters.nationality Require users to be or not to be of a specific nationality
-     * @param {number?} proofParameters.checkNationality Determines whether @param proofParameters.nationality requires users to be (@param proofParameters.checkNationality is set to `1` or ignored) or not to be (@param proofParameters.checkNationality set to `2`) of the specified nationality, or ignored (@param proofParameters.checkNationality set to `0`)
+     * @param {string?} proofParameters.nationalityEqualTo Require users to be of a specific nationality
+     * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
      * @param {string?} proofParameters.minAge Require users to be at least @param proofParameters.minAge years old
      * @param {string?} proofParameters.maxAge Require users to be at most @param proofParameters.maxAge years old
      * @returns {Promise} A `Promise` that is fulfilled when the proof is done on the app
@@ -519,8 +511,8 @@ class OutdidSDK {
      * Request and verify a proof generated from OutDID's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
      * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
-     * @param {string?} proofParameters.nationality Require users to be or not to be of a specific nationality
-     * @param {number?} proofParameters.checkNationality Determines whether @param proofParameters.nationality requires users to be (@param proofParameters.checkNationality is set to `1` or ignored) or not to be (@param proofParameters.checkNationality set to `2`) of the specified nationality, or ignored (@param proofParameters.checkNationality set to `0`)
+     * @param {string?} proofParameters.nationalityEqualTo Require users to be of a specific nationality
+     * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
      * @param {string?} proofParameters.minAge Require users to be at least @param proofParameters.minAge years old
      * @param {string?} proofParameters.maxAge Require users to be at most @param proofParameters.maxAge years old
      * @returns {Promise<{result: boolean, cert, params}>} Whether the proof is valid or not, the generated certificate, and the parameters in the proof
