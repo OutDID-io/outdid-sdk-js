@@ -16,7 +16,7 @@ export function checkMaxAgeValid(maxAge: number, minDob: string): boolean {
   return (year - minDobYear) <= maxAge;
 }
 
-export function verifyParameters(requestedParameters: any, parametersFromProof: any, appID: string) {
+export function verifyParameters(requestedParameters: any, parametersFromProof: any, appID: string, userID: string) {
   if (requestedParameters === undefined) {
     throw new Error("Proof parameters have not been set up correctly");
   }
@@ -27,6 +27,15 @@ export function verifyParameters(requestedParameters: any, parametersFromProof: 
     }
     if (requestedParameters.appID !== appID) {
       throw new Error(`App ID from proof is not the same as required app ID: ${appID} vs ${requestedParameters.appID}`);
+    }
+  }
+
+  if (requestedParameters.userID) {
+    if (!userID) {
+      throw new Error("Optional user ID is not set in the proof correctly but is expected");
+    }
+    if (requestedParameters.userID !== userID) {
+      throw new Error(`Optional user ID from proof is not the same as required user ID: ${userID} vs ${requestedParameters.userID}`);
     }
   }
 

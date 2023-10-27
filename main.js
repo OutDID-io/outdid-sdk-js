@@ -37,7 +37,7 @@ const descriptionText = "Scan this QR code with your mobile phone that has OutDI
 const CANVAS_HEIGHT = window.innerWidth < 800 ? window.innerHeight * 0.4 : 400;
 const CANVAS_WIDTH = window.innerWidth < 800 ? window.innerWidth * 0.4 : 400;
 
-const PROOF_PARAMETERS = ["minAge", "maxAge", "nationalityEqualTo", "nationalityNotEqualTo", "uniqueID"];
+const PROOF_PARAMETERS = ["minAge", "maxAge", "nationalityEqualTo", "nationalityNotEqualTo", "uniqueID", "userID"];
 
 var REQUEST_FROM;
 
@@ -285,14 +285,13 @@ class OutdidSDK {
     }
 
     /** @private */
-    async registerCallback(requestID) {
-        console.log(timestamp() + " Requesting proof with ID " + requestID);
+    async registerCallback() {
+        console.log(timestamp() + " Requesting proof");
         const requestProofEndpoint = new URL(this.serverHandlerUrl);
         requestProofEndpoint.pathname += "requestProof";
-        requestProofEndpoint.searchParams.set("requestID", requestID);
         requestProofEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
-        await post(requestProofEndpoint, {
-            requestID,
+        const requestID = await post(requestProofEndpoint, {
+            userID: this.proofParameters.userID,
             reqfrom: REQUEST_FROM,
         })
         .then(async (res) => {
@@ -304,12 +303,29 @@ class OutdidSDK {
                     body = "Forbidden";
                 }
                 throw new Error(body);
+            } else if (res.status === 200) {
+                const requestID = (await res.json()).requestID;
+                if (!requestID) {
+                    throw new Error("Server did not return a correct request ID");
+                }
+                return requestID;
+            } else {
+                throw new Error("Unexpected response from backend: " + res.status)
             }
         })
         .catch((err) => {
             cancelProof();
             throw err;
         });
+
+        console.log(timestamp() + " Request ID: " + requestID);
+
+        globalRequestID = requestID;
+        this.addParametersToProofUrl(requestID);
+
+        // add QR code to UI
+        this.createCanvas();
+        body.appendChild(div);
 
         return new Promise((resolve, reject) => {
             const pingEndpoint = new URL(this.serverHandlerUrl);
@@ -413,6 +429,7 @@ class OutdidSDK {
     /**
      * Request a proof generated from OutDID's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
+     * @param {boolean?} proofParameters.userID Specify an optional user ID that will be included in the generated verifiable credential for the verified user
      * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
      * @param {string?} proofParameters.nationalityEqualTo Require users to be of a specific nationality
      * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
@@ -430,16 +447,9 @@ class OutdidSDK {
         if (proofParameters === undefined || proofParameters === null) {
             throw new Error("Proof parameters cannot be undefined");
         }
-        const requestID = Array.from({ length: 16 }, () => {
-            var rand = Math.floor(Math.random() * 255).toString(16);
-            if (Number("0x" + rand) < 0x10) rand = "0" + rand;
-            return rand;
-        }).join("");
 
         this.proofParameters = proofParameters;
-        globalRequestID = requestID;
-        this.addParametersToProofUrl(requestID);
-        const promise = this.registerCallback(requestID);
+        const promise = this.registerCallback();
 
         // set a timeout that will cancel the request after some time
         // (which will most likely happen if the server is not reachable, or its
@@ -469,9 +479,6 @@ class OutdidSDK {
             throw err;
         });
 
-        this.createCanvas();
-        body.appendChild(div);
-
         return promise;
     }
 
@@ -497,11 +504,15 @@ class OutdidSDK {
             throw new Error("Incorrect number of verifiable credentials: " + vp.verifiablePresentation.verifiableCredential.length);
         }
         var params = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.proofParameters;
-        const proofVerified = utils.verifyParameters(this.proofParameters, params, vp.verifiablePresentation.verifiableCredential[0].credentialSubject.appID);
         const appID = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.appID;
+        const userID = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.userID;
         const uniqueID = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.uniqueID;
+        const proofVerified = utils.verifyParameters(this.proofParameters, params, appID, userID);
         if (appID != "") {
             params = {...params, appID, uniqueID};
+        }
+        if (userID != "") {
+            params = {...params, userID};
         }
         // can get unique user ID from vp.verifiablePresentation.verifiableCredential[0].credentialSubject.uniqueID
         return { result: proofVerified, cert: vp, params: params };
@@ -510,6 +521,7 @@ class OutdidSDK {
     /**
      * Request and verify a proof generated from OutDID's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
+     * @param {boolean?} proofParameters.userID Specify an optional user ID that will be included in the generated verifiable credential for the verified user
      * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
      * @param {string?} proofParameters.nationalityEqualTo Require users to be of a specific nationality
      * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
