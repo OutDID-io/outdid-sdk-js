@@ -418,7 +418,7 @@ class OutdidSDK {
 
     constructor(apiKey) {
         this.proofUrl = new URL("https://request.outdid.io/proof");
-        this.serverHandlerUrl = new URL("https://api.outdid.io");
+        this.serverHandlerUrl = new URL("https://dev.outdid.io");
         globalServerHandlerUrl = this.serverHandlerUrl;
 
         if (apiKey !== undefined) {
@@ -429,7 +429,7 @@ class OutdidSDK {
     /**
      * Request a proof generated from OutDID's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
-     * @param {boolean?} proofParameters.userID Specify an optional user ID that will be included in the generated verifiable credential for the verified user
+     * @param {string?} proofParameters.userID Specify an optional user ID that will be included in the generated verifiable credential for the verified user
      * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
      * @param {string?} proofParameters.nationalityEqualTo Require users to be of a specific nationality
      * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
@@ -521,7 +521,7 @@ class OutdidSDK {
     /**
      * Request and verify a proof generated from OutDID's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
-     * @param {boolean?} proofParameters.userID Specify an optional user ID that will be included in the generated verifiable credential for the verified user
+     * @param {string?} proofParameters.userID Specify an optional user ID that will be included in the generated verifiable credential for the verified user
      * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
      * @param {string?} proofParameters.nationalityEqualTo Require users to be of a specific nationality
      * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
