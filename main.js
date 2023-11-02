@@ -286,10 +286,16 @@ class OutdidSDK {
 
     /** @private */
     async registerCallback() {
+        this.vcNonce = Array.from({ length: 16 }, () => {
+            var rand = Math.floor(Math.random() * 255).toString(16);
+            if (Number("0x" + rand) < 0x10) rand = "0" + rand;
+            return rand;
+        }).join("");
         console.log(timestamp() + " Requesting proof");
         const requestProofEndpoint = new URL(this.serverHandlerUrl);
         requestProofEndpoint.pathname += "requestProof";
         requestProofEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
+        requestProofEndpoint.searchParams.set("vcNonce", this.vcNonce);
         const requestID = await post(requestProofEndpoint, {
             userID: this.proofParameters.userID,
             reqfrom: REQUEST_FROM,
@@ -494,8 +500,8 @@ class OutdidSDK {
         if (!vp || !vp.verified) {
             throw new Error("Verifiable Presentation is not valid");
         }
-        if (vp.payload.nonce !== globalRequestID) {
-            throw new Error("Verifiable Presentation nonce is not the same as the request ID");
+        if (vp.payload.nonce !== this.vcNonce) {
+            throw new Error("Verifiable Presentation nonce is not the same as the generated nonce");
         }
         if (vp.verifiablePresentation.verifiableCredential === undefined) {
             throw new Error("Verifiable credential is not defined.");
