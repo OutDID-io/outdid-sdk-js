@@ -102,9 +102,13 @@ function cancelProof() {
         cancelProofEndpoint.pathname += "cancelProof";
         cancelProofEndpoint.searchParams.set("requestID", globalRequestID);
         cancelProofEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
+        if (this.test === true) {
+            cancelProofEndpoint.searchParams.set("test", "true");
+        }
         post(cancelProofEndpoint, {
             requestID: globalRequestID,
             reqfrom: REQUEST_FROM,
+            test: this.test,
         });
         globalRequestID = null;
     }
@@ -296,9 +300,13 @@ class OutdidSDK {
         requestProofEndpoint.pathname += "requestProof";
         requestProofEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
         requestProofEndpoint.searchParams.set("vcNonce", this.vcNonce);
+        if (this.test === true) {
+         requestProofEndpoint.searchParams.set("test", "true");
+        }
         const requestID = await post(requestProofEndpoint, {
             userID: this.proofParameters.userID,
             reqfrom: REQUEST_FROM,
+            test: this.test,
         })
         .then(async (res) => {
             if (res.status === 403) {
@@ -338,11 +346,15 @@ class OutdidSDK {
             pingEndpoint.pathname += "ping";
             pingEndpoint.searchParams.set("requestID", requestID);
             pingEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
+            if (this.test === true) {
+                pingEndpoint.searchParams.set("test", "true");
+            }
             interval = setInterval(() => {
                 var err = false;
                 post(pingEndpoint, {
                     requestID,
                     reqfrom: REQUEST_FROM,
+                    test: this.test,
                 }).then((response) => {
                     if (response.ok) {
                         return response.json();
@@ -420,11 +432,20 @@ class OutdidSDK {
         this.proofUrl.searchParams.set("requestID", requestID);
         this.proofUrl.searchParams.set("requestingDomain", document.location.hostname);
         this.proofUrl.searchParams.set("reqfrom", REQUEST_FROM);
+        if (this.test === true) {
+            this.proofUrl.searchParams.set("test", "true");
+        }
     }
 
-    constructor(apiKey) {
+    /**
+     * Construct an instance of the Outdid SDK
+     * @param {string} apiKey Your key issued by Outdid
+     * @param {boolean?} test Indicate whether the request is intended to be a test (NOTE: Test requests are separate from real requests)
+     */
+    constructor(apiKey, test) {
         this.proofUrl = new URL("https://request.outdid.io/proof");
-        this.serverHandlerUrl = new URL("https://dev.outdid.io");
+        this.serverHandlerUrl = new URL(test === true ? "https://dev.outdid.io" : "https://api.outdid.io");
+        this.test = test;
         globalServerHandlerUrl = this.serverHandlerUrl;
 
         if (apiKey !== undefined) {
