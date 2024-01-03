@@ -2,7 +2,7 @@
 
 Outdid provides a verification API together with an minimal SDK that can help you in verifying the result from the API.
 
-First, you need to initialize a verification by making an HTTP POST request to https://api.outdid.io/initReq and pass the following HTTP parameters:
+First, you need to initialize a verification by making an HTTP POST request to https://api.outdid.io/initReq from your private backend and pass the following HTTP parameters:
 
 | parameter name | parameter type                  | description                                                                                                                                                                                                                                                                    |
 | -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
