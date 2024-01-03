@@ -31,7 +31,7 @@ const outdidLogoSvgWhite = `
 `;
 
 const waitText = "Please wait while the proof is generating";
-const descriptionText = "Scan this QR code with your mobile phone that has OutDID installed and generate a proof. <br>"
+const descriptionText = "Scan this QR code with your mobile phone that has Outdid installed and generate a proof. <br>"
     + "In order to submit the proof, you will need to be connected to the internet.";
 
 const CANVAS_HEIGHT = window.innerWidth < 800 ? window.innerHeight * 0.4 : 400;
@@ -39,7 +39,7 @@ const CANVAS_WIDTH = window.innerWidth < 800 ? window.innerWidth * 0.4 : 400;
 
 const PROOF_PARAMETERS = ["minAge", "maxAge", "nationalityEqualTo", "nationalityNotEqualTo", "uniqueID", "userID"];
 
-var REQUEST_FROM;
+var API_KEY;
 
 div.style.height = "100%";
 div.style.width = "100%";
@@ -67,19 +67,13 @@ function timestamp() {
     return `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}T${now.getUTCHours()}:${now.getUTCMinutes()}:${now.getUTCSeconds()}.${now.getUTCMilliseconds()}Z`;
 }
 
-var timeout, interval;
+var timeout, proofStarted = false;
 
 function closeProofOverlay() {
     console.log(timestamp() + " Closing proof overlay");
     if (timeout != null) {
         try {
             clearTimeout(timeout);
-        } catch (_) {}
-    }
-    if (interval != null) {
-        try {
-            clearInterval(interval);
-            interval = null;
         } catch (_) {}
     }
     try {
@@ -91,20 +85,21 @@ function closeProofOverlay() {
         description.innerHTML = descriptionText;
         body.removeChild(div);
     } catch (_) {}
+    proofStarted = false;
 }
 
-var globalRequestID, globalServerHandlerUrl;
+var globalRequestID, globalOutdidHandlerUrl;
 function cancelProof() {
     closeProofOverlay();
     if (globalRequestID) {
         console.log(timestamp() + " Cancelling proof");
-        const cancelProofEndpoint = new URL(globalServerHandlerUrl);
+        const cancelProofEndpoint = new URL(globalOutdidHandlerUrl);
         cancelProofEndpoint.pathname += "cancelProof";
         cancelProofEndpoint.searchParams.set("requestID", globalRequestID);
-        cancelProofEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
+        cancelProofEndpoint.searchParams.set("reqfrom", API_KEY);
         post(cancelProofEndpoint, {
             requestID: globalRequestID,
-            reqfrom: REQUEST_FROM,
+            reqfrom: API_KEY,
         });
         globalRequestID = null;
     }
@@ -148,7 +143,7 @@ close.style.cursor = "pointer";
 outdidLogo.innerHTML = outdidLogoSvgWhite;
 outdidLogo.style.width = "34px";
 // outdidLogo.style.height = "24px";
-outdidName.innerHTML = "OutDID";
+outdidName.innerHTML = "Outdid";
 outdidName.style.display = "flex";
 outdidName.style.flex = "1";
 outdidName.style.alignItems = "flex-start";
@@ -274,7 +269,7 @@ class OutdidSDK {
     createCanvas() {
         QRCode.toCanvas(canvas, this.proofUrl.toString(), {
             width: CANVAS_WIDTH,
-            height: CANVAS_HEIGHT,
+            // height: CANVAS_HEIGHT,
             margin: 0
         }, function (error) {
             if (error) throw error;
@@ -292,13 +287,14 @@ class OutdidSDK {
             return rand;
         }).join("");
         console.log(timestamp() + " Requesting proof");
-        const requestProofEndpoint = new URL(this.serverHandlerUrl);
+        const requestProofEndpoint = new URL(this.outdidHandlerUrl);
         requestProofEndpoint.pathname += "requestProof";
-        requestProofEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
-        requestProofEndpoint.searchParams.set("vcNonce", this.vcNonce);
-        const requestID = await post(requestProofEndpoint, {
-            userID: this.proofParameters.userID,
-            reqfrom: REQUEST_FROM,
+        requestProofEndpoint.searchParams.set("reqfrom", API_KEY);
+        requestProofEndpoint.searchParams.set("requestID", globalRequestID);
+        const { qrUrl } = await post(requestProofEndpoint, {
+            reqfrom: API_KEY,
+            vcNonce: this.vcNonce,
+            requestID: globalRequestID,
         })
         .then(async (res) => {
             if (res.status === 403) {
@@ -310,11 +306,12 @@ class OutdidSDK {
                 }
                 throw new Error(body);
             } else if (res.status === 200) {
-                const requestID = (await res.json()).requestID;
-                if (!requestID) {
-                    throw new Error("Server did not return a correct request ID");
+                const json = await res.json();
+                const qrUrl = json.qrUrl;
+                if (!qrUrl) {
+                    throw new Error("Server did not return a correct URL for the QR code");
                 }
-                return requestID;
+                return { qrUrl };
             } else {
                 throw new Error("Unexpected response from backend: " + res.status)
             }
@@ -324,37 +321,44 @@ class OutdidSDK {
             throw err;
         });
 
-        console.log(timestamp() + " Request ID: " + requestID);
-
-        globalRequestID = requestID;
-        this.addParametersToProofUrl(requestID);
+        this.proofUrl = new URL(qrUrl);
 
         // add QR code to UI
         this.createCanvas();
         body.appendChild(div);
 
-        return new Promise((resolve, reject) => {
-            const pingEndpoint = new URL(this.serverHandlerUrl);
+        return new Promise(async (resolve, reject) => {
+            const pingEndpoint = new URL(this.outdidHandlerUrl);
             pingEndpoint.pathname += "ping";
-            pingEndpoint.searchParams.set("requestID", requestID);
-            pingEndpoint.searchParams.set("reqfrom", REQUEST_FROM);
-            interval = setInterval(() => {
+            pingEndpoint.searchParams.set("requestID", globalRequestID);
+            pingEndpoint.searchParams.set("reqfrom", API_KEY);
+            let proofPending = true;
+            while (proofPending) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                // if for any reason the proof was cancelled, reject this promise
+                if (globalRequestID == null) {
+                    resolve(new Error("Proof cancelled"));
+                    return;
+                }
                 var err = false;
-                post(pingEndpoint, {
-                    requestID,
-                    reqfrom: REQUEST_FROM,
-                }).then((response) => {
+                try {
+                    const response = await post(pingEndpoint, {
+                        requestID: globalRequestID,
+                        reqfrom: API_KEY,
+                    });
+                    let body;
                     if (response.ok) {
-                        return response.json();
+                        body = await response.json();
                     } else if (response.status === 304) {
                         // ignored, break the promise chain
                         throw Error("ignored");
                     } else {
                         err = true;
-                        return response.text();
+                        body = await response.text();
                     }
-                }).then((body) => {
+
                     if (err) {
+                        proofPending = false;
                         console.log(timestamp() + " Server returned an unexpected response: " + body);
                         closeProofOverlay();
                         reject(new Error(body));
@@ -362,82 +366,56 @@ class OutdidSDK {
                     }
                     if (body === "proofStarted") {
                         console.log(timestamp() + " Proof started");
-                        try {
-                            canvasDiv.removeChild(canvas);
-                            canvasDiv.removeChild(footer);
-                            canvasDiv.appendChild(loader);
-                            description.innerHTML = waitText;
-                        } catch (_) {}
+                        if (!proofStarted) {
+                            proofStarted = true;
+                            try {
+                                canvasDiv.removeChild(canvas);
+                                canvasDiv.removeChild(footer);
+                                canvasDiv.appendChild(loader);
+                                description.innerHTML = waitText;
+                            } catch (_) {}
+                        }
                     } else if (body.proofResult !== undefined) {
+                        proofPending = false;
                         console.log(timestamp() + " Proof received");
-                        resolve(body.proofResult);
+                        resolve({ result: body.proofResult, requestID: globalRequestID });
                         closeProofOverlay();
                     } else {
+                        proofPending = false;
                         console.log(timestamp() + " Verification failed: " + body.verificationFailed);
                         reject(new Error(body.verificationFailed));
                         closeProofOverlay();
                     }
-                }).catch((err) => {
+                } catch(err) {
                     if (err.message !== "ignored") {
+                        proofPending = false;
                         reject(err);
                         closeProofOverlay();
                     }
-                });
-            }, 2000);
-        });
-    }
-
-    /** @private */
-    addParametersToProofUrl(requestID) {
-        console.log(timestamp() + " Adding the following parameters to the proof request: " + PROOF_PARAMETERS);
-        for (var param of PROOF_PARAMETERS) {
-            // nationality should be a valid country
-            if ((param === "nationalityEqualTo" && this.proofParameters.nationalityEqualTo) ||
-                (param === "nationalityNotEqualTo" && this.proofParameters.nationalityNotEqualTo)) {
-                if ((this.proofParameters[param].length == 2 && iso.whereAlpha2(this.proofParameters[param]) == undefined)
-                    || (this.proofParameters[param].length == 3 && iso.whereAlpha3(this.proofParameters[param]) == undefined)
-                    || (this.proofParameters[param].length != 2 && this.proofParameters[param].length != 3 && (iso.whereCountry(this.proofParameters[param]) == undefined))
-                ) {
-                    throw new Error("Nationality is not a country");
                 }
             }
-            if (this.proofParameters[param] !== undefined
-                && this.proofParameters[param] !== null
-                && this.proofParameters[param] !== "") {
-
-                if (this.proofParameters[param].trim && this.proofParameters[param].trim() == "") continue;
-                this.proofUrl.searchParams.set(param, this.proofParameters[param]);
-            }
-        }
-
-        if (this.proofUrl.searchParams.get("nationalityEqualTo") && this.proofUrl.searchParams.get("nationalityNotEqualTo")) {
-            throw new Error("Cannot use both `nationalityEqualTo` and `nationalityNotEqualTo`");
-        }
-
-        if (Array.from(this.proofUrl.searchParams.values()).length === 0) {
-            throw new Error("You need to request at least one valid parameter");
-        }
-        this.proofUrl.searchParams.set("requestID", requestID);
-        this.proofUrl.searchParams.set("requestingDomain", document.location.hostname);
-        this.proofUrl.searchParams.set("reqfrom", REQUEST_FROM);
+        });
     }
 
     /**
      * Construct an instance of the Outdid SDK
      * @param {string} apiKey Your key issued by Outdid
+     * @param {string} requestID Request ID returned after registering the verification request with Outdid's backend
      */
-    constructor(apiKey) {
+    constructor(apiKey, requestID) {
         this.proofUrl = new URL("https://request.outdid.io/proof");
-        this.serverHandlerUrl = new URL("https://api.outdid.io");
-        globalServerHandlerUrl = this.serverHandlerUrl;
+        // this.outdidHandlerUrl = new URL("https://api.outdid.io");
+        this.outdidHandlerUrl = new URL("https://dev.outdid.io");
+        globalRequestID = requestID;
+        globalOutdidHandlerUrl = this.outdidHandlerUrl;
 
         if (apiKey !== undefined) {
-            REQUEST_FROM = apiKey;
+            API_KEY = apiKey;
         }
     }
 
     /**
-     * Request a proof generated from OutDID's mobile app
+     * Request a proof generated from Outdid's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
      * @param {string?} proofParameters.userID Specify an optional user ID that will be included in the generated verifiable credential for the verified user
      * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
@@ -447,18 +425,13 @@ class OutdidSDK {
      * @param {string?} proofParameters.maxAge Require users to be at most @param proofParameters.maxAge years old
      * @returns {Promise} A `Promise` that is fulfilled when the proof is done on the app
      */
-    async requestProof(proofParameters) {
-        const proof = await this._requestProof(proofParameters);
+    async requestProof() {
+        const proof = await this._requestProof();
         return proof;
     }
 
     /** @private */
-    _requestProof(proofParameters) {
-        if (proofParameters === undefined || proofParameters === null) {
-            throw new Error("Proof parameters cannot be undefined");
-        }
-
-        this.proofParameters = proofParameters;
+    _requestProof() {
         const promise = this.registerCallback();
 
         // set a timeout that will cancel the request after some time
@@ -495,17 +468,28 @@ class OutdidSDK {
     /**
      * Verify the generated proof using Outdid's verifiable credentials
      * @param {string} proof The JWT object returned from `requestProof`
+     * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
+     * @param {string?} proofParameters.userID Specify an optional user ID that will be included in the generated verifiable credential for the verified user
+     * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
+     * @param {string?} proofParameters.nationalityEqualTo Require users to be of a specific nationality
+     * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
+     * @param {string?} proofParameters.minAge Require users to be at least @param proofParameters.minAge years old
+     * @param {string?} proofParameters.maxAge Require users to be at most @param proofParameters.maxAge years old
+     * @param {string} nonce The nonce used to issue the VC credential. It should be returned by the popup window that requests the proof
      * @returns {Promise<{result: boolean, cert, params}>} Whether the proof is valid or not, the generated certificate, and the parameters in the proof
      */
-    async verifyProof(proof) {
+    async verifyProof(proof, proofParameters, nonce) {
         const resolver = new Resolver(getResolver())
 
         const vp = await verifyPresentation(proof, resolver);
         if (!vp || !vp.verified) {
             throw new Error("Verifiable Presentation is not valid");
         }
-        if (vp.payload.nonce !== this.vcNonce) {
+        if (vp.payload.nonce !== nonce) {
             throw new Error("Verifiable Presentation nonce is not the same as the generated nonce");
+        }
+        if (vp.issuer !== "did:web:demo.outdid.io" && vp.issuer !== "did:web:request.outdid.io") {
+            throw new Error("Verifiable credential issuer is not correct");
         }
         if (vp.verifiablePresentation.verifiableCredential === undefined) {
             throw new Error("Verifiable credential is not defined.");
@@ -517,7 +501,7 @@ class OutdidSDK {
         const appID = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.appID;
         const userID = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.userID;
         const uniqueID = vp.verifiablePresentation.verifiableCredential[0].credentialSubject.uniqueID;
-        const proofVerified = utils.verifyParameters(this.proofParameters, params, appID, userID);
+        const proofVerified = utils.verifyParameters(proofParameters, params, appID, userID);
         if (appID != "") {
             params = {...params, appID, uniqueID};
         }
@@ -529,7 +513,7 @@ class OutdidSDK {
     }
 
     /**
-     * Request and verify a proof generated from OutDID's mobile app
+     * Request and verify a proof generated from Outdid's mobile app
      * @param {Object} proofParameters The required proof parameters that should be valid for the requested user
      * @param {string?} proofParameters.userID Specify an optional user ID that will be included in the generated verifiable credential for the verified user
      * @param {boolean?} proofParameters.uniqueID Specify whether to generate a user ID unique for your use-case
@@ -540,8 +524,8 @@ class OutdidSDK {
      * @returns {Promise<{result: boolean, cert, params}>} Whether the proof is valid or not, the generated certificate, and the parameters in the proof
      */
     async requestAndVerifyProof(proofParameters) {
-        const proof = await this._requestProof(proofParameters);
-        return this.verifyProof(proof);
+        const proof = await this._requestProof();
+        return this.verifyProof(proof, proofParameters, this.vcNonce ?? "");
     }
 }
 

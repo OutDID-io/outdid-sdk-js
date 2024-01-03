@@ -1,6 +1,7 @@
 node_modules/
 outdid.js
 sdk.js
+dev.js
 
 build/
 
