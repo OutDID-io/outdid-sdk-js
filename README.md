@@ -119,7 +119,7 @@ Depending on what information you want to verify from your customers, you can us
 
 ### Error handling
 
-Common errors that can be expected to be thrown by the SDK include:
+Common errors that can be expected to be returned by the API include:
 
 - No proof parameters have been specified when requesting a proof
 - The proof parameters are not correct (for example the nationality is not a valid country)
