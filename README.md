@@ -1,6 +1,96 @@
+# Outdid API
+
+Outdid provides a verification API together with an minimal SDK that can help you in verifying the result from the API.
+
+First, you need to initialize a verification by making an HTTP POST request to https://api.outdid.io/initReq and pass the following HTTP parameters:
+
+| parameter name | parameter type                  | description                                                                                                                                                                                                                                                                    |
+| -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `reqfrom`      | query string parameter          | Your public identifier issued by Outdid                                                                                                                                                                                                                                        |
+| `secret`       | query string parameter          | Your secret issued by Outdid                                                                                                                                                                                                                                                   |
+| `callback`     | HTTP POST body string parameter | Optional callback URL, where the user will be redirected to after the verification is complete. This can be used to indicate to your backend that the verification is complete. Alternatively, if the parameter is not set, the result will be sent to the requesting frontend |
+| `vcNonce`      | HTTP POST body string parameter | A random nonce used in the generation of a VC credential with the requested information                                                                                                                                                                                        |
+| `parameters`   | HTTP POST body object parameter | An object containing any combination of [these parameters](#optional-proof-parameters)                                                                                                                                                                                         |
+
+If the initialization request succeeded, the endpoint will return a request ID and an Auth URL as a JSON object with `requestID` and `authUrl` parameters respectively.
+
+Then, you need to open a popup window that should display `authUrl` to the user. You can use the following code segment as a template:
+
+```javascript
+const width = 600;
+const height = 800;
+const left = window.screen.width / 2 - width / 2;
+const top = window.screen.height / 2 - height / 2;
+
+const popup = window.open(
+  response.authUrl,
+  undefined,
+  `popup, width=${width}, height=${height}, left=${left}, top=${top}`
+);
+```
+
+Then, the user will have to perform an authentication in the popup window to prove the requested parameters are valid for their passport. Once the verification is complete, the user will be redirected to the `callback` URL indicating the verification is complete.
+
+After completing verification, your backend can request the result by making an authenticated request to https://api.outdid.io/proofResult with `reqfrom`, `secret` and `requestID` as query string parameters like so:
+
+```
+https://api.outdid.io/proofResult?reqfrom=pk_<your_identifier>&secret=<your_secret>&requestID=1234<...>abcd
+```
+
+The response will be a JSON object with `proofResult` parameter if everything went okay. Otherwise, if for some reason the verification submitted by the user was incorrect, the reason will be returned in `verificationFailed`. Other common responses include HTTP response code `400` in case the verification request was cancelled or expired, or `304` if the verification is still pending and there is no result yet to be shared.
+
+Assuming the verification was successful, the result returned in `proofResult` is a [Verifiable Credential JWT object](#w3c-credentials).
+You can use the following code segment to verify the VC yourself:
+
+```javascript
+import { Resolver } from "did-resolver";
+import { getResolver } from "web-did-resolver";
+import { verifyPresentation } from "did-jwt-vc";
+
+const resolver = new Resolver(getResolver());
+const vp = await verifyPresentation(proofResult, resolver);
+
+if (
+  vp &&
+  vp.verified &&
+  vp.issuer == "did:web:request.outdid.io" &&
+  vp.payload.nonce === vcNonce &&
+  vp.verifiablePresentation.verifiableCredential &&
+  vp.verifiablePresentation.verifiableCredential.length === 1 &&
+  typeof vp.verifiablePresentation.verifiableCredential[0]?.credentialSubject
+    ?.userID === "string" &&
+  vp.verifiablePresentation.verifiableCredential[0].credentialSubject.userID.toLowerCase() ===
+    payload.address.toLowerCase()
+) {
+  // vp.verifiablePresentation.verifiableCredential[0]?.credentialSubject?.userID contains the optional userID
+  // if you have requested a unique personal ID, you can find it in vp.verifiablePresentation.verifiableCredential[0]?.credentialSubject?.uniqueID
+  // the other requested parameters are in vp.verifiablePresentation.verifiableCredential[0]?.credentialSubject?.proofParameters
+  // you can verify that they are the same as the parameters you requested in `parameters`
+
+  valid = true;
+}
+```
+
+Additionally, you can also use the Outdid SDK to perform this verification with:
+
+```javascript
+const outdid = new OutdidSDK(reqfrom, requestID);
+outdid
+  .verifyProof(proofResult, parameters, vcNonce)
+  .then((result) => {
+    // handle successfully verified user data
+    // you can get the verified parameters from result.params
+  })
+  .catch((e) => {
+    // handle unsuccessful verification with e.message containing the reason what failed
+  });
+```
+
+In the future you will also be able to generate the popup with the Outdid SDK.
+
 # Outdid SDK
 
-Outdid provides an SDK for private identity verification that can be integrated into any webpage using only html and javascript. You can request any combination of the supported [proof parameters](#optional-proof-parameters) and the SDK will generate a QR code that can be scanned by [Outdid's mobile app](https://outdid.io/download) and used to generate a verifiable proof that the information requested is correct for the document scanned by the app.
+Outdid provides a javascript SDK for helping you with the use of the API. It can be integrated into any webpage using only html and javascript, and in any Node-based webapp. You can verify any combination of the supported [proof parameters](#optional-proof-parameters), which will be requested by your users with the help of [Outdid's mobile app](https://outdid.io/download), which is used to generate a verifiable proof that the information requested is correct for the document scanned by the app.
 
 In order to use the SDK, you can use our SDK CDN by including this in your html file:
 
@@ -8,21 +98,11 @@ In order to use the SDK, you can use our SDK CDN by including this in your html 
 <script src="https://cdn.outdid.io/sdk.js"></script>
 ```
 
-Or you can compile a build yourself with `npm run build` and include it in your html file like so:
+This allows you to create a `const outdid = new OutdidSDK(<public API_KEY>, <request ID>);` anywhere in the file.
 
-```html
-<script src="outdid.js"></script>
-```
+In order to verify a proof, you can either use the `outdid.verifyProof(proofResult, requestedProofParameters, vcNonce)`.
 
-This allows you to create a `const outdid = new OutdidSDK(<API_KEY>);` anywhere in the file.
-
-In order to request and verify a proof, you can either use the `sdk.requestAndVerifyProof(proofParameters)` or if you want to have access to the generated `proof`, you can use:
-
-```js
-outdid.requestProof(proofParameters).then((proof) => outdid.verifyProof(proof));
-```
-
-You can check the [./index.html](./index.html) file for a very simple html page that uses the Outdid SDK.
+You can check the [Outdid demo verification page](https://demo.outdid.io/) for a very simple html page that uses the Outdid API and SDK.
 
 ### Optional proof parameters
 
