@@ -2,15 +2,18 @@
 
 Outdid provides a verification API together with an minimal SDK that can help you in verifying the result from the API.
 
-First, you need to initialize a verification by making an HTTP POST request to https://api.outdid.io/initReq from your private backend and pass the following HTTP parameters:
+#### Overview
 
-| parameter name | parameter type                  | description                                                                                                                                                                                                                                                                    |
-| -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `reqfrom`      | query string parameter          | Your public identifier issued by Outdid                                                                                                                                                                                                                                        |
-| `secret`       | query string parameter          | Your secret issued by Outdid                                                                                                                                                                                                                                                   |
-| `callback`     | HTTP POST body string parameter | Optional callback URL, where the user will be redirected to after the verification is complete. This can be used to indicate to your backend that the verification is complete. Alternatively, if the parameter is not set, the result will be sent to the requesting frontend |
-| `vcNonce`      | HTTP POST body string parameter | A random nonce used in the generation of a VC credential with the requested user information. It is used to prevent replay attacks. We recommend generating a random 14-20 byte string and use it as a nonce.                                                                  |
-| `parameters`   | HTTP POST body object parameter | An object containing any combination of [these parameters](#optional-proof-parameters)                                                                                                                                                                                         |
+
+First, you need to initialize a verification by making an HTTP POST request to https://api.outdid.io/init-req from your private backend and pass the following HTTP parameters:
+
+| parameter name     | parameter type                  | description                                                                                                                                                                                                                                                                    |
+| ------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `publicIdentifier` | query string parameter          | Your public identifier issued by Outdid                                                                                                                                                                                                                                        |
+| `secret`           | query string parameter          | Your secret issued by Outdid                                                                                                                                                                                                                                                   |
+| `redirect`         | HTTP POST body string parameter | Optional redirect URL, where the user will be redirected to after the verification is complete. This can be used to indicate to your backend that the verification is complete. Alternatively, if the parameter is not set, the result will be sent to the requesting frontend |
+| `vcNonce`          | HTTP POST body string parameter | A random nonce used in the generation of a VC credential with the requested user information. It is used to prevent replay attacks. We recommend generating a random 14-20 byte string and use it as a nonce.                                                                  |
+| `parameters`       | HTTP POST body object parameter | An object containing any combination of [these parameters](#optional-proof-parameters)                                                                                                                                                                                         |
 
 If the initialization request succeeded, the endpoint will return a request ID and an Auth URL as a JSON object with `requestID` and `authUrl` parameters respectively.
 
@@ -31,10 +34,10 @@ const popup = window.open(
 
 Then, the user will have to perform an authentication in the popup window to prove the requested parameters are valid for their passport. Once the verification is complete, the user will be redirected to the `callback` URL indicating the verification is complete.
 
-After completing verification, your backend can request the result by making an authenticated request to https://api.outdid.io/proofResult with `reqfrom`, `secret` and `requestID` as query string parameters like so:
+After completing verification, your backend can request the result by making an authenticated request to https://api.outdid.io/proof-result with `publicIdentifier`, `secret` and `requestID` as query string parameters like so:
 
 ```
-https://api.outdid.io/proofResult?reqfrom=pk_<your_identifier>&secret=<your_secret>&requestID=1234<...>abcd
+https://api.outdid.io/proof-result?publicIdentifier=pk_<your_identifier>&secret=<your_secret>&requestID=1234<...>abcd
 ```
 
 The response will be a JSON object with `proofResult` parameter if everything went okay. Otherwise, if for some reason the verification submitted by the user was incorrect, the reason will be returned in `verificationFailed`. Other common responses include HTTP response code `400` in case the verification request was cancelled or expired, or `304` if the verification is still pending and there is no result yet to be shared.
@@ -74,7 +77,7 @@ if (
 Additionally, you can also use the Outdid SDK to perform this verification with:
 
 ```javascript
-const outdid = new OutdidSDK(reqfrom, requestID);
+const outdid = new OutdidSDK(publicIdentifier, requestID);
 outdid
   .verifyProof(proofResult, parameters, vcNonce)
   .then((result) => {

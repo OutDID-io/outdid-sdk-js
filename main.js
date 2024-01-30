@@ -94,12 +94,12 @@ function cancelProof() {
     if (globalRequestID) {
         console.log(timestamp() + " Cancelling proof");
         const cancelProofEndpoint = new URL(globalOutdidHandlerUrl);
-        cancelProofEndpoint.pathname += "cancelProof";
+        cancelProofEndpoint.pathname += "cancel-proof";
         cancelProofEndpoint.searchParams.set("requestID", globalRequestID);
-        cancelProofEndpoint.searchParams.set("reqfrom", API_KEY);
+        cancelProofEndpoint.searchParams.set("publicIdentifier", API_KEY);
         post(cancelProofEndpoint, {
             requestID: globalRequestID,
-            reqfrom: API_KEY,
+            publicIdentifier: API_KEY,
         });
         globalRequestID = null;
     }
@@ -288,11 +288,11 @@ class OutdidSDK {
         }).join("");
         console.log(timestamp() + " Requesting proof");
         const requestProofEndpoint = new URL(this.outdidHandlerUrl);
-        requestProofEndpoint.pathname += "requestProof";
-        requestProofEndpoint.searchParams.set("reqfrom", API_KEY);
+        requestProofEndpoint.pathname += "request-proof";
+        requestProofEndpoint.searchParams.set("publicIdentifier", API_KEY);
         requestProofEndpoint.searchParams.set("requestID", globalRequestID);
         const { qrUrl } = await post(requestProofEndpoint, {
-            reqfrom: API_KEY,
+            publicIdentifier: API_KEY,
             vcNonce: this.vcNonce,
             requestID: globalRequestID,
         })
@@ -331,7 +331,7 @@ class OutdidSDK {
             const pingEndpoint = new URL(this.outdidHandlerUrl);
             pingEndpoint.pathname += "ping";
             pingEndpoint.searchParams.set("requestID", globalRequestID);
-            pingEndpoint.searchParams.set("reqfrom", API_KEY);
+            pingEndpoint.searchParams.set("publicIdentifier", API_KEY);
             let proofPending = true;
             while (proofPending) {
                 await new Promise(resolve => setTimeout(resolve, 2000));
@@ -344,7 +344,7 @@ class OutdidSDK {
                 try {
                     const response = await post(pingEndpoint, {
                         requestID: globalRequestID,
-                        reqfrom: API_KEY,
+                        publicIdentifier: API_KEY,
                     });
                     let body;
                     if (response.ok) {
