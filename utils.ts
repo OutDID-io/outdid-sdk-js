@@ -66,5 +66,13 @@ export function verifyParameters(requestedParameters: any, parametersFromProof: 
     throw new Error(`Min date of birth from the proof does not verify the required max age: ${parametersFromProof.minDob} vs ${requestedParameters.maxAge}`);
   }
 
+  if (requestedParameters.verifyFirstName === true && !parametersFromProof.firstName) {
+    throw new Error("First name is not verified");
+  }
+
+  if (requestedParameters.verifyLastName === true && !parametersFromProof.lastName) {
+    throw new Error("Last name is not verified");
+  }
+
   return true;
 }

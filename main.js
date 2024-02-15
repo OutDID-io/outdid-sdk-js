@@ -37,7 +37,7 @@ const descriptionText = "Scan this QR code with your mobile phone that has Outdi
 const CANVAS_HEIGHT = window.innerWidth < 800 ? window.innerHeight * 0.4 : 400;
 const CANVAS_WIDTH = window.innerWidth < 800 ? window.innerWidth * 0.4 : 400;
 
-const PROOF_PARAMETERS = ["minAge", "maxAge", "nationalityEqualTo", "nationalityNotEqualTo", "uniqueID", "userID"];
+const PROOF_PARAMETERS = ["minAge", "maxAge", "nationalityEqualTo", "nationalityNotEqualTo", "uniqueID", "userID", "verifyFirstName", "verifyLastName"];
 
 var API_KEY;
 
@@ -423,6 +423,8 @@ class OutdidSDK {
      * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
      * @param {string?} proofParameters.minAge Require users to be at least @param proofParameters.minAge years old
      * @param {string?} proofParameters.maxAge Require users to be at most @param proofParameters.maxAge years old
+     * @param {boolean?} proofParameters.verifyFirstName Include the user's first name or names from their document in the proof
+     * @param {boolean?} proofParameters.verifyLastName Include the user's last name from their document in the proof
      * @returns {Promise} A `Promise` that is fulfilled when the proof is done on the app
      */
     async requestProof() {
@@ -475,6 +477,8 @@ class OutdidSDK {
      * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
      * @param {string?} proofParameters.minAge Require users to be at least @param proofParameters.minAge years old
      * @param {string?} proofParameters.maxAge Require users to be at most @param proofParameters.maxAge years old
+     * @param {boolean?} proofParameters.verifyFirstName Include the user's first name or names from their document in the proof
+     * @param {boolean?} proofParameters.verifyLastName Include the user's last name from their document in the proof
      * @param {string} nonce The nonce used to issue the VC credential. It should be returned by the popup window that requests the proof
      * @returns {Promise<{result: boolean, cert, params}>} Whether the proof is valid or not, the generated certificate, and the parameters in the proof
      */
@@ -569,6 +573,12 @@ class OutdidSDK {
         if (parameters.minDob !== undefined) {
             verifiedString += "<li>The user was born after " + parameters.minDob + "</li>";
         }
+        if (parameters.firstName !== undefined) {
+            verifiedString += "<li>The user's first name(s) are " + parameters.firstName + "</li>";
+        }
+        if (parameters.lastName !== undefined) {
+            verifiedString += "<li>The user's last name is " + parameters.lastName + "</li>";
+        }
         if (parameters.userID !== undefined) {
             verifiedString += "<li>The provided user identifier for this particular user is " + parameters.userID + "</li>";
         }
@@ -588,6 +598,8 @@ class OutdidSDK {
      * @param {string?} proofParameters.nationalityNotEqualTo Require users to not be of a specific nationality
      * @param {string?} proofParameters.minAge Require users to be at least @param proofParameters.minAge years old
      * @param {string?} proofParameters.maxAge Require users to be at most @param proofParameters.maxAge years old
+     * @param {boolean?} proofParameters.verifyFirstName Include the user's first name or names from their document in the proof
+     * @param {boolean?} proofParameters.verifyLastName Include the user's last name from their document in the proof
      * @returns {Promise<{result: boolean, cert, params}>} Whether the proof is valid or not, the generated certificate, and the parameters in the proof
      */
     async requestAndVerifyProof(proofParameters) {
