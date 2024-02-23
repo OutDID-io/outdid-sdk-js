@@ -312,6 +312,13 @@ class OutdidSDK {
                     throw new Error("Server did not return a correct URL for the QR code");
                 }
                 return { qrUrl };
+            } else if (res.status === 400) {
+                const response = await res.text();
+                if (response.toLowerCase().includes("already handled")) {
+                    throw new Error("Already handled");
+                } else {
+                    throw new Error("Unexpected response from backend: Status code: 400; " + response)
+                }
             } else {
                 throw new Error("Unexpected response from backend: " + res.status)
             }
