@@ -6,13 +6,9 @@ const div = document.createElement("div");
 const canvasDiv = document.createElement("div");
 const header = document.createElement("div");
 const footer = document.createElement("div");
-const copyBtn = document.createElement("a");
 const openLinkBtn = document.createElement("a");
 const openLinkBtnDiv = document.createElement("div");
-const outdidLogo = document.createElement("div");
-const outdidName = document.createElement("p");
 const description = document.createElement("p");
-const close = document.createElement("span");
 const canvas = document.createElement("canvas");
 const loader = document.createElement("div");
 const { Resolver } = require("did-resolver");
@@ -31,8 +27,8 @@ const outdidLogoSvgWhite = `
 `;
 
 const waitText = "Please wait while the proof is generating";
-const descriptionText = "Scan this QR code with your mobile phone that has Outdid installed and generate a proof. <br>"
-    + "In order to submit the proof, you will need to be connected to the internet.";
+const descriptionText = "Scan this QR code with your mobile phone that has Outdid installed to continue with the verification. <br>"
+    + "In order to submit the anonymized result, you will need to be connected to the internet.";
 
 const CANVAS_HEIGHT = window.innerWidth < 800 ? window.innerHeight * 0.4 : 400;
 const CANVAS_WIDTH = window.innerWidth < 800 ? window.innerWidth * 0.4 : 400;
@@ -40,27 +36,6 @@ const CANVAS_WIDTH = window.innerWidth < 800 ? window.innerWidth * 0.4 : 400;
 const PROOF_PARAMETERS = ["minAge", "maxAge", "nationalityEqualTo", "nationalityNotEqualTo", "uniqueID", "userID", "verifyFirstName", "verifyLastName"];
 
 var API_KEY;
-
-div.style.height = "100%";
-div.style.width = "100%";
-
-// prevent accidental selection of the background
-// div.style.pointerEvents = "none";
-div.style.userSelect = "none";
-
-// fixed position over the whole window
-div.style.display = "flex";
-div.style.position = "fixed";
-div.style.left = "0";
-div.style.top = "0";
-
-// align the qr code at the center
-div.style.alignItems = "center";
-div.style.justifyContent = "center";
-
-// need to be on top and dim background
-div.style.zIndex = "99999";
-div.style.background = "rgba(0, 0, 0, 0.75)";
 
 function timestamp() {
     const now = new Date();
@@ -77,14 +52,16 @@ function closeProofOverlay() {
         } catch (_) {}
     }
     try {
+        if (outdidQRCode) {
+            outdidQRCode.style.display = "none";
+        }
+        description.innerHTML = descriptionText;
+    } catch (_) {}
+    try {
         canvasDiv.removeChild(loader);
         canvasDiv.appendChild(canvas);
         canvasDiv.appendChild(footer);
     } catch (_) { }
-    try {
-        description.innerHTML = descriptionText;
-        body.removeChild(div);
-    } catch (_) {}
     proofStarted = false;
 }
 
@@ -105,13 +82,14 @@ function cancelProof() {
     }
 }
 
-div.addEventListener("click", function (e) {
-    if (e.target === this || e.target === close) {
-        if (confirm("If you close the overlay, the flow of the proof generation will be interrupted and you will need to start over.")) {
-            cancelProof();
-        }
-    }
-});
+// TODO: ?
+// div.addEventListener("click", function (e) {
+//     if (e.target === this || e.target === close) {
+//         if (confirm("If you close the overlay, the flow of the proof generation will be interrupted and you will need to start over.")) {
+//             cancelProof();
+//         }
+//     }
+// });
 
 canvasDiv.style.alignItems = "center";
 canvasDiv.style.justifyContent = "center";
@@ -132,55 +110,21 @@ description.style.margin = "16px 40px";
 description.style.display = "block";
 description.style.fontSize = window.innerWidth < 800 ? "12px" : "19px";
 if (window.innerWidth < 800) {
-    copyBtn.style.fontSize = "12px";
     openLinkBtn.style.fontSize = "12px";
 }
 
-close.innerHTML = "&times";
-close.setAttribute("id", "outdid-close");
-close.style.cursor = "pointer";
-
-outdidLogo.innerHTML = outdidLogoSvgWhite;
-outdidLogo.style.width = "34px";
-// outdidLogo.style.height = "24px";
-outdidName.innerHTML = "Outdid";
-outdidName.style.display = "flex";
-outdidName.style.flex = "1";
-outdidName.style.alignItems = "flex-start";
-outdidName.style.color = "white";
-outdidName.style.margin = "0 0 0 10px";
-outdidName.style.fontWeight = "600";
-outdidName.style.fontSize = "30px";
-
 header.setAttribute("id", "outdid-header");
 footer.setAttribute("id", "outdid-footer");
-footer.appendChild(copyBtn);
 footer.appendChild(openLinkBtnDiv);
 openLinkBtnDiv.appendChild(openLinkBtn);
 openLinkBtnDiv.style.marginTop = "10px";
 
-function copyLink(proofUrl) {
-    navigator.clipboard.writeText(proofUrl);
-    copyBtn.innerHTML = "Link copied!";
-    // @ts-ignore
-    copyBtn.onclick = "#";
-    setTimeout(() => {
-        copyBtn.onclick = () => copyLink(proofUrl);
-        copyBtn.innerHTML = "Copy link";
-    }, 2000);
-}
-
-copyBtn.innerHTML = "Copy link";
-copyBtn.setAttribute("class", "outdid-btn");
 openLinkBtn.innerHTML = "Open link in Outdid";
 openLinkBtn.setAttribute("class", "outdid-btn");
 
 canvasDiv.appendChild(description)
 canvasDiv.appendChild(canvas);
-div.appendChild(canvasDiv);
-header.appendChild(outdidLogo);
-header.appendChild(outdidName);
-header.appendChild(close);
+var outdidQRCode = document.getElementById("outdidQRCode");
 canvasDiv.appendChild(header);
 canvasDiv.appendChild(footer);
 
@@ -264,18 +208,42 @@ function post(url, body) {
     });
 }
 
+function getMobileOperatingSystem() {
+    var userAgent = navigator.userAgent;
+  
+        // Windows Phone must come first because its UA also contains "Android"
+      if (/windows phone/i.test(userAgent)) {
+          return "Windows Phone";
+      }
+  
+      if (/android/i.test(userAgent)) {
+          return "Android";
+      }
+  
+      // iOS detection from: http://stackoverflow.com/a/9039885/177710
+      if (/iPad|iPhone|iPod/.test(userAgent)) {
+          return "iOS";
+      }
+  
+      return "unknown";
+  }
+
 class OutdidSDK {
     /** @private */
     createCanvas() {
-        QRCode.toCanvas(canvas, this.proofUrl.toString(), {
-            width: CANVAS_WIDTH,
-            // height: CANVAS_HEIGHT,
-            margin: 0
-        }, function (error) {
-            if (error) throw error;
-        });
+        const os = getMobileOperatingSystem();
+        if (os !== "Android" && os !== "iOS") {
+            QRCode.toCanvas(canvas, this.proofUrl.toString(), {
+                width: CANVAS_WIDTH,
+                // height: CANVAS_HEIGHT,
+                margin: 0
+            }, function (error) {
+                if (error) throw error;
+            });
+        } else {
+            description.innerHTML = "";
+        }
 
-        copyBtn.onclick = () => copyLink(this.proofUrl.toString());
         openLinkBtn.href = this.proofUrl.toString();
     }
 
@@ -332,7 +300,16 @@ class OutdidSDK {
 
         // add QR code to UI
         this.createCanvas();
-        body.appendChild(div);
+        outdidQRCode = document.getElementById("outdidQRCode");
+        if (outdidQRCode) {
+            outdidQRCode.appendChild(canvasDiv);
+            outdidQRCode.style.display = "inline";
+        
+            const outdidQRCodePending = document.getElementById("outdidQRCodePending");
+            if (outdidQRCodePending) {
+                outdidQRCodePending.style.display = "none";
+            }
+        }
 
         return new Promise(async (resolve, reject) => {
             const pingEndpoint = new URL(this.outdidHandlerUrl);
