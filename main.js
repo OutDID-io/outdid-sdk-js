@@ -1,6 +1,6 @@
 // @ts-check
 const QRCode = require("qrcode");
-const iso = require('iso-3166-1');
+const { createHash } = require("crypto");
 const body = document.body;
 const div = document.createElement("div");
 const canvasDiv = document.createElement("div");
@@ -411,8 +411,7 @@ class OutdidSDK {
      */
     constructor(apiKey, requestID) {
         this.proofUrl = new URL("https://request.outdid.io/proof");
-        // this.outdidHandlerUrl = new URL("https://api.outdid.io");
-        this.outdidHandlerUrl = new URL("https://dev.outdid.io");
+        this.outdidHandlerUrl = new URL("https://api.outdid.io");
         globalRequestID = requestID;
         globalOutdidHandlerUrl = this.outdidHandlerUrl;
 
@@ -590,7 +589,7 @@ class OutdidSDK {
             verifiedString += "<li>The provided user identifier for this particular user is " + parameters.userID + "</li>";
         }
         if (parameters.appID != undefined && parameters.uniqueID !== undefined) {
-            verifiedString += "<li>The user has a unique and anonymized identifier, which is " + parameters.uniqueID + ". This identifier is unique for " + parameters.appID + "</li>";
+            verifiedString += "<li>The user has a unique and anonymized identifier, which is " + createHash("sha256").update(parameters.uniqueID.join("")).digest().toString("hex") + ".</li>";
         }
         verifiedString += "</ul>";
         return verifiedString;
