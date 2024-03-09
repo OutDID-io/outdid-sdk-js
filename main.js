@@ -45,11 +45,11 @@ var timeout, proofStarted = false;
 
 function closeProofOverlay() {
     console.log(timestamp() + " Closing proof overlay");
-    if (timeout != null) {
-        try {
-            clearTimeout(timeout);
-        } catch (_) {}
-    }
+    // if (timeout != null) {
+    //     try {
+    //         clearTimeout(timeout);
+    //     } catch (_) {}
+    // }
     try {
         if (outdidQRCode) {
             outdidQRCode.style.display = "none";
@@ -421,30 +421,30 @@ class OutdidSDK {
         // set a timeout that will cancel the request after some time
         // (which will most likely happen if the server is not reachable, or its
         // cache has been cleared before the frontend was able to reach it)
-        this.requestExpirationTimeout = setTimeout(() => {
-            var throwErr = true;
-            try {
-                cancelProof();
-            } catch (_) {
-                throwErr = false;
-            }
+        // this.requestExpirationTimeout = setTimeout(() => {
+        //     var throwErr = true;
+        //     try {
+        //         cancelProof();
+        //     } catch (_) {
+        //         throwErr = false;
+        //     }
 
-            if (throwErr) {
-                throw new Error("Proof not received within timeout. Please check your network connection and try again later.");
-            }
-        }, CANCEL_PROOF_AFTER_MS);
-        timeout = this.requestExpirationTimeout;
+        //     if (throwErr) {
+        //         throw new Error("Proof not received within timeout. Please check your network connection and try again later.");
+        //     }
+        // }, CANCEL_PROOF_AFTER_MS);
+        // timeout = this.requestExpirationTimeout;
 
-        promise.then(() => {
-            try {
-                clearTimeout(this.requestExpirationTimeout);
-            } catch (err) {
-                console.error("err: ", err);
-            }
-        }).catch((err) => {
-            clearTimeout(this.requestExpirationTimeout);
-            throw err;
-        });
+        // promise.then(() => {
+        //     try {
+        //         clearTimeout(this.requestExpirationTimeout);
+        //     } catch (err) {
+        //         console.error("err: ", err);
+        //     }
+        // }).catch((err) => {
+        //     clearTimeout(this.requestExpirationTimeout);
+        //     throw err;
+        // });
 
         return promise;
     }
