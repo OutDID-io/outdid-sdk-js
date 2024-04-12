@@ -4,7 +4,6 @@ const { createHash } = require("crypto");
 const body = document.body;
 const div = document.createElement("div");
 const canvasDiv = document.createElement("div");
-const header = document.createElement("div");
 const footer = document.createElement("div");
 const openLinkBtn = document.createElement("a");
 const openLinkBtnDiv = document.createElement("div");
@@ -27,7 +26,7 @@ const outdidLogoSvgWhite = `
 `;
 
 const waitText = "Your phone is privately verifying your information";
-const descriptionText = "To continue, scan this with your mobile phone";
+const descriptionText = "To start, scan this using your iOS or Android phone";
 
 const CANVAS_HEIGHT = window.innerWidth < 800 ? window.innerHeight * 0.4 : 400;
 const CANVAS_WIDTH = window.innerWidth < 800 ? window.innerWidth * 0.4 : 400;
@@ -41,15 +40,7 @@ function timestamp() {
     return `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}T${now.getUTCHours()}:${now.getUTCMinutes()}:${now.getUTCSeconds()}.${now.getUTCMilliseconds()}Z`;
 }
 
-var timeout, proofStarted = false;
-
-function closeProofOverlay() {
-    console.log(timestamp() + " Closing proof overlay");
-    // if (timeout != null) {
-    //     try {
-    //         clearTimeout(timeout);
-    //     } catch (_) {}
-    // }
+function hideQR() {
     try {
         if (outdidQRCode) {
             outdidQRCode.style.display = "none";
@@ -61,34 +52,9 @@ function closeProofOverlay() {
         canvasDiv.appendChild(canvas);
         canvasDiv.appendChild(footer);
     } catch (_) { }
-    proofStarted = false;
 }
 
-var globalRequestID, globalOutdidHandlerUrl;
-function cancelProof() {
-    closeProofOverlay();
-    if (globalRequestID) {
-        console.log(timestamp() + " Cancelling proof");
-        const cancelProofEndpoint = new URL(globalOutdidHandlerUrl);
-        cancelProofEndpoint.pathname += "cancel-proof";
-        cancelProofEndpoint.searchParams.set("requestID", globalRequestID);
-        cancelProofEndpoint.searchParams.set("publicIdentifier", API_KEY);
-        post(cancelProofEndpoint, {
-            requestID: globalRequestID,
-            publicIdentifier: API_KEY,
-        });
-        globalRequestID = null;
-    }
-}
-
-// TODO: ?
-// div.addEventListener("click", function (e) {
-//     if (e.target === this || e.target === close) {
-//         if (confirm("If you close the overlay, the flow of the proof generation will be interrupted and you will need to start over.")) {
-//             cancelProof();
-//         }
-//     }
-// });
+var globalRequestID;
 
 canvasDiv.style.alignItems = "center";
 canvasDiv.style.justifyContent = "center";
@@ -112,19 +78,17 @@ if (window.innerWidth < 800) {
     openLinkBtn.style.fontSize = "12px";
 }
 
-header.setAttribute("id", "outdid-header");
 footer.setAttribute("id", "outdid-footer");
 footer.appendChild(openLinkBtnDiv);
 openLinkBtnDiv.appendChild(openLinkBtn);
 openLinkBtnDiv.style.marginTop = "10px";
 
-openLinkBtn.innerHTML = "Open link in Outdid";
-openLinkBtn.setAttribute("class", "outdid-btn");
+openLinkBtn.innerHTML = "Start verification";
+openLinkBtn.setAttribute("class", "btn btn-primary");
 
 canvasDiv.appendChild(description)
 canvasDiv.appendChild(canvas);
 var outdidQRCode = document.getElementById("outdidQRCode");
-canvasDiv.appendChild(header);
 canvasDiv.appendChild(footer);
 
 loader.setAttribute("id", "outdid-loader");
@@ -166,21 +130,11 @@ const css = `
         /* margin-left: ${CANVAS_WIDTH + 190}px; */
     }
 
-    #outdid-header {
-        top: -40px;
-        align-items: center;
-        position: absolute;
-        left: 0;
-        display: flex;
-        justify-content: space-between;
-        height: 30px;
-        width: 100%;
-    }
-
     #outdid-footer {
         /* display: flex; */
         margin-top: 25px;
         justify-content: center;
+        font-family: Arial;
     }
 
     .outdid-btn {
@@ -209,21 +163,21 @@ function post(url, body) {
 
 function getMobileOperatingSystem() {
     var userAgent = navigator.userAgent;
-  
+
         // Windows Phone must come first because its UA also contains "Android"
       if (/windows phone/i.test(userAgent)) {
           return "Windows Phone";
       }
-  
+
       if (/android/i.test(userAgent)) {
           return "Android";
       }
-  
+
       // iOS detection from: http://stackoverflow.com/a/9039885/177710
       if (/iPad|iPhone|iPod/.test(userAgent)) {
           return "iOS";
       }
-  
+
       return "unknown";
   }
 
@@ -241,9 +195,99 @@ class OutdidSDK {
             });
         } else {
             description.innerHTML = "";
+            canvas.height = 0;
         }
 
         openLinkBtn.href = this.proofUrl.toString();
+    }
+
+    /** @private */
+    wordFromParameter(parameterName) {
+        if (parameterName === "nationalityEqualTo") {
+            return "You are from ";
+        } else if (parameterName === "nationalityNotEqualTo") {
+            return "You are not from ";
+        } else if (parameterName === "maxAge") {
+            return "You are below ";
+        } else if (parameterName === "minAge") {
+            return "You are over ";
+        } else if (parameterName === "requester") {
+            return "You are a unique user of ";
+        } else if (parameterName === "verifyFirstName") {
+            return "Your given names";
+        } else if (parameterName === "verifyLastName") {
+            return "Your last name";
+        }
+        return "";
+    }
+
+    /** @private */
+    notSharedParameter(parameterName) {
+        var notSharedStr = "<li>Your ";
+        if (parameterName === "nationalityEqualTo") {
+            notSharedStr += "exact nationality";
+        } else if (parameterName === "age") {
+            notSharedStr += "exact age";
+        } else if (parameterName === "name") {
+            notSharedStr += "name";
+        } else if (parameterName === "verifyFirstName") {
+            notSharedStr += "exact first name";
+        } else if (parameterName === "verifyLastName") {
+            notSharedStr += "exact last name";
+        } else {
+            return "";
+        }
+
+        notSharedStr += " won't be shared.</li>\n";
+        return notSharedStr;
+      }
+
+    /** @private */
+    addParametersToDescription(parameters, requester) {
+        const requesterHtml = document.getElementById("requester");
+        if (requesterHtml) {
+            requesterHtml.innerText = requester;
+        }
+        try {
+            var parameterList = document.getElementById("parameter-list");
+            if (!parameterList) {
+                console.error("Parameter list cannot be found.");
+                return;
+            }
+
+            if (parameters["verifyFirstName"] !== true) {
+                delete parameters["verifyFirstName"];
+            }
+
+            if (parameters["verifyLastName"] !== true) {
+                delete parameters["verifyLastName"];
+            }
+
+            for (const [parameterName, parameter] of Object.entries(parameters)) {
+                const wordFromParameter = this.wordFromParameter(parameterName);
+                if (wordFromParameter !== "")
+                    parameterList.innerHTML += "<li>" + wordFromParameter + (parameterName.includes("Name") ? "" : parameter) + "</li>\n";
+            }
+
+            // handle parameters that whose exact values will not be shared
+            if (!("nationalityEqualTo" in parameters)) {
+                parameterList.innerHTML += this.notSharedParameter("nationalityEqualTo");
+            }
+
+            if (!parameters["verifyFirstName"] &&
+                !parameters["verifyLastName"]) {
+                parameterList.innerHTML += this.notSharedParameter("name");
+            } else if (!parameters["verifyFirstName"]) {
+                parameterList.innerHTML += this.notSharedParameter("verifyFirstName");
+            } else if (!parameters["verifyLastName"]) {
+                parameterList.innerHTML += this.notSharedParameter("verifyLastName");
+            }
+
+            parameterList.innerHTML += this.notSharedParameter("age");
+        } catch (err) {
+            console.error(err);
+            return;
+        }
     }
 
     /** @private */
@@ -254,15 +298,10 @@ class OutdidSDK {
             return rand;
         }).join("");
         console.log(timestamp() + " Requesting proof");
-        const requestProofEndpoint = new URL(this.outdidHandlerUrl);
-        requestProofEndpoint.pathname += "request-proof";
-        requestProofEndpoint.searchParams.set("publicIdentifier", API_KEY);
-        requestProofEndpoint.searchParams.set("requestID", globalRequestID);
-        const { qrUrl } = await post(requestProofEndpoint, {
-            publicIdentifier: API_KEY,
-            vcNonce: this.vcNonce,
-            requestID: globalRequestID,
-        })
+        const verificationRequestEndpoint = new URL(this.outdidHandlerUrl);
+        verificationRequestEndpoint.pathname += "verification-request";
+        verificationRequestEndpoint.searchParams.set("requestID", globalRequestID);
+        const { qrUrl, parameters, requester } = await fetch(verificationRequestEndpoint)
         .then(async (res) => {
             if (res.status === 403) {
                 var body = "";
@@ -274,24 +313,28 @@ class OutdidSDK {
                 throw new Error(body);
             } else if (res.status === 200) {
                 const json = await res.json();
+                if (json.status === "expired") {
+                    throw new Error("Expired");
+                }
+                if (json.status === "succeeded" || json.status === "failed") {
+                    throw new Error("Already handled")
+                }
+                if (json.status !== "pending") {
+                    throw new Error("Request is not correct");
+                }
                 const qrUrl = json.qrUrl;
+                const parameters = json.parameters;
+                const requester = json.requester;
                 if (!qrUrl) {
                     throw new Error("Server did not return a correct URL for the QR code");
                 }
-                return { qrUrl };
-            } else if (res.status === 400) {
-                const response = await res.text();
-                if (response.toLowerCase().includes("already handled")) {
-                    throw new Error("Already handled");
-                } else {
-                    throw new Error("Unexpected response from backend: Status code: 400; " + response)
-                }
+                return { qrUrl, parameters, requester };
             } else {
                 throw new Error("Unexpected response from backend: " + res.status)
             }
         })
         .catch((err) => {
-            cancelProof();
+            hideQR();
             throw err;
         });
 
@@ -299,25 +342,30 @@ class OutdidSDK {
 
         // add QR code to UI
         this.createCanvas();
+        this.addParametersToDescription(parameters, requester);
         outdidQRCode = document.getElementById("outdidQRCode");
         if (outdidQRCode) {
             outdidQRCode.appendChild(canvasDiv);
             outdidQRCode.style.display = "inline";
-        
+
             const outdidQRCodePending = document.getElementById("outdidQRCodePending");
             if (outdidQRCodePending) {
                 outdidQRCodePending.style.display = "none";
+
+                const outdidRequest = document.getElementById("outdidRequest");
+                if (outdidRequest) {
+                    outdidRequest.style.display = "block";
+                }
             }
         }
 
         return new Promise(async (resolve, reject) => {
-            const pingEndpoint = new URL(this.outdidHandlerUrl);
-            pingEndpoint.pathname += "ping";
-            pingEndpoint.searchParams.set("requestID", globalRequestID);
-            pingEndpoint.searchParams.set("publicIdentifier", API_KEY);
+            const verificationRequestEndpoint = new URL(this.outdidHandlerUrl);
+            verificationRequestEndpoint.pathname += "verification-request";
+            verificationRequestEndpoint.searchParams.set("requestID", globalRequestID);
             let proofPending = true;
             while (proofPending) {
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 40000));
                 // if for any reason the proof was cancelled, reject this promise
                 if (globalRequestID == null) {
                     resolve(new Error("Proof cancelled"));
@@ -325,55 +373,43 @@ class OutdidSDK {
                 }
                 var err = false;
                 try {
-                    const response = await post(pingEndpoint, {
-                        requestID: globalRequestID,
-                        publicIdentifier: API_KEY,
-                    });
+                    const response = await fetch(verificationRequestEndpoint);
                     let body;
                     if (response.ok) {
                         body = await response.json();
-                    } else if (response.status === 304) {
-                        // ignored, break the promise chain
-                        throw Error("ignored");
                     } else {
                         err = true;
                         body = await response.text();
                     }
 
+                    if (body.status === "pending") {
+                        // ignored, break the promise chain
+                        throw Error("ignored");
+                    }
+
                     if (err) {
                         proofPending = false;
                         console.log(timestamp() + " Server returned an unexpected response: " + body);
-                        closeProofOverlay();
+                        hideQR();
                         reject(new Error(body));
                         return;
                     }
-                    if (body === "proofStarted") {
-                        console.log(timestamp() + " Proof started");
-                        if (!proofStarted) {
-                            proofStarted = true;
-                            try {
-                                canvasDiv.removeChild(canvas);
-                                canvasDiv.removeChild(footer);
-                                canvasDiv.appendChild(loader);
-                                description.innerHTML = waitText;
-                            } catch (_) {}
-                        }
-                    } else if (body.proofResult !== undefined) {
+                    if (body.status === "succeeded" || body.status === "failed") {
                         proofPending = false;
-                        console.log(timestamp() + " Proof received");
-                        resolve({ result: body.proofResult, requestID: globalRequestID });
-                        closeProofOverlay();
+                        console.log(timestamp() + " Verification received");
+                        resolve({ result: body, requestID: globalRequestID });
+                        hideQR();
                     } else {
                         proofPending = false;
                         console.log(timestamp() + " Verification failed: " + body.verificationFailed);
                         reject(new Error(body.verificationFailed));
-                        closeProofOverlay();
+                        hideQR();
                     }
                 } catch(err) {
                     if (err.message !== "ignored") {
                         proofPending = false;
                         reject(err);
-                        closeProofOverlay();
+                        hideQR();
                     }
                 }
             }
@@ -387,9 +423,8 @@ class OutdidSDK {
      */
     constructor(apiKey, requestID) {
         this.proofUrl = new URL("https://request.outdid.io/proof");
-        this.outdidHandlerUrl = new URL("https://api.outdid.io");
+        .outdidHandlerUrl = new URL("https://api.outdid.io");
         globalRequestID = requestID;
-        globalOutdidHandlerUrl = this.outdidHandlerUrl;
 
         if (apiKey !== undefined) {
             API_KEY = apiKey;
@@ -532,7 +567,7 @@ class OutdidSDK {
         if (userID != "") {
             verifiedParameters = {...verifiedParameters, userID};
         }
-    
+
         return { valid: vp.verified, issuedAt, issuedBy: vp.issuer, verifiedParameters};
     }
 
