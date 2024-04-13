@@ -423,7 +423,7 @@ class OutdidSDK {
      */
     constructor(apiKey, requestID) {
         this.proofUrl = new URL("https://request.outdid.io/proof");
-        .outdidHandlerUrl = new URL("https://api.outdid.io");
+        this.outdidHandlerUrl = new URL("https://api.outdid.io");
         globalRequestID = requestID;
 
         if (apiKey !== undefined) {
