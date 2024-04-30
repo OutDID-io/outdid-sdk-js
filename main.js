@@ -193,9 +193,11 @@ class OutdidSDK {
             }, function (error) {
                 if (error) throw error;
             });
+            openLinkBtnDiv.style.display = "none";
         } else {
             description.innerHTML = "";
             canvas.height = 0;
+            openLinkBtnDiv.style.display = "inline";
         }
 
         openLinkBtn.href = this.proofUrl.toString();
@@ -211,7 +213,7 @@ class OutdidSDK {
             return "You are below ";
         } else if (parameterName === "minAge") {
             return "You are over ";
-        } else if (parameterName === "requester") {
+        } else if (parameterName === "uniqueness") {
             return "You are a unique user of ";
         } else if (parameterName === "verifyFirstName") {
             return "Your given names";
@@ -223,7 +225,7 @@ class OutdidSDK {
 
     /** @private */
     notSharedParameter(parameterName) {
-        var notSharedStr = "<li>Your ";
+        var notSharedStr = '<li><i class="fa fa-times-circle" style="font-size:20px;color:red;padding-right:8px;vertical-align:middle;"></i>Your ';
         if (parameterName === "nationalityEqualTo") {
             notSharedStr += "exact nationality";
         } else if (parameterName === "age") {
@@ -264,9 +266,11 @@ class OutdidSDK {
             }
 
             for (const [parameterName, parameter] of Object.entries(parameters)) {
-                const wordFromParameter = this.wordFromParameter(parameterName);
-                if (wordFromParameter !== "")
-                    parameterList.innerHTML += "<li>" + wordFromParameter + (parameterName.includes("Name") ? "" : parameter) + "</li>\n";
+                if (parameter) {
+                    const wordFromParameter = this.wordFromParameter(parameterName);
+                    if (wordFromParameter !== "")
+                        parameterList.innerHTML += '<li class="parameters-list-entry">' + '<i class="fa fa-check-circle" style="font-size:20px;color:green;padding-right:8px;vertical-align:middle;"></i>' + wordFromParameter + (parameterName.includes("Name") ? "" : (parameterName === "uniqueness" ? requester : parameter)) + "</li>\n";
+                }
             }
 
             // handle parameters that whose exact values will not be shared
@@ -365,7 +369,7 @@ class OutdidSDK {
             verificationRequestEndpoint.searchParams.set("requestID", globalRequestID);
             let proofPending = true;
             while (proofPending) {
-                await new Promise(resolve => setTimeout(resolve, 40000));
+                await new Promise(resolve => setTimeout(resolve, 4000));
                 // if for any reason the proof was cancelled, reject this promise
                 if (globalRequestID == null) {
                     resolve(new Error("Proof cancelled"));
