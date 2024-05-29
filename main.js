@@ -54,7 +54,7 @@ function hideQR() {
     } catch (_) { }
 }
 
-var globalRequestID;
+var globalVerificationID;
 
 canvasDiv.style.alignItems = "center";
 canvasDiv.style.justifyContent = "center";
@@ -303,8 +303,8 @@ class OutdidSDK {
         }).join("");
         console.log(timestamp() + " Requesting proof");
         const verificationRequestEndpoint = new URL(this.outdidHandlerUrl);
-        verificationRequestEndpoint.pathname += "verification-request";
-        verificationRequestEndpoint.searchParams.set("requestID", globalRequestID);
+        verificationRequestEndpoint.pathname += "v1/verification-request";
+        verificationRequestEndpoint.searchParams.set("verificationID", globalVerificationID);
         const { qrUrl, parameters, requester } = await fetch(verificationRequestEndpoint)
         .then(async (res) => {
             if (res.status === 403) {
@@ -365,13 +365,13 @@ class OutdidSDK {
 
         return new Promise(async (resolve, reject) => {
             const verificationRequestEndpoint = new URL(this.outdidHandlerUrl);
-            verificationRequestEndpoint.pathname += "verification-request";
-            verificationRequestEndpoint.searchParams.set("requestID", globalRequestID);
+            verificationRequestEndpoint.pathname += "v1/verification-request";
+            verificationRequestEndpoint.searchParams.set("verificationID", globalVerificationID);
             let proofPending = true;
             while (proofPending) {
                 await new Promise(resolve => setTimeout(resolve, 4000));
                 // if for any reason the proof was cancelled, reject this promise
-                if (globalRequestID == null) {
+                if (globalVerificationID == null) {
                     resolve(new Error("Proof cancelled"));
                     return;
                 }
@@ -401,7 +401,7 @@ class OutdidSDK {
                     if (body.status === "succeeded" || body.status === "failed") {
                         proofPending = false;
                         console.log(timestamp() + " Verification received");
-                        resolve({ result: body, requestID: globalRequestID });
+                        resolve({ result: body, verificationID: globalVerificationID });
                         hideQR();
                     } else {
                         proofPending = false;
@@ -423,12 +423,12 @@ class OutdidSDK {
     /**
      * Construct an instance of the Outdid SDK
      * @param {string} apiKey Your key issued by Outdid
-     * @param {string} requestID Request ID returned after registering the verification request with Outdid's backend
+     * @param {string} verificationID Request ID returned after registering the verification request with Outdid's backend
      */
-    constructor(apiKey, requestID) {
+    constructor(apiKey, verificationID) {
         this.proofUrl = new URL("https://request.outdid.io/proof");
         this.outdidHandlerUrl = new URL("https://api.outdid.io");
-        globalRequestID = requestID;
+        globalVerificationID = verificationID;
 
         if (apiKey !== undefined) {
             API_KEY = apiKey;
